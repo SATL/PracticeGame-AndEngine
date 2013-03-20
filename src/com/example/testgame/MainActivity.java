@@ -23,14 +23,6 @@ import org.andengine.extension.physics.box2d.FixedStepPhysicsWorld;
 import org.andengine.extension.physics.box2d.PhysicsConnector;
 import org.andengine.extension.physics.box2d.PhysicsFactory;
 import org.andengine.extension.physics.box2d.PhysicsWorld;
-import org.andengine.extension.tmx.TMXLayer;
-import org.andengine.extension.tmx.TMXLoader;
-import org.andengine.extension.tmx.TMXProperties;
-import org.andengine.extension.tmx.TMXTile;
-import org.andengine.extension.tmx.TMXTileProperty;
-import org.andengine.extension.tmx.TMXTiledMap;
-import org.andengine.extension.tmx.TMXLoader.ITMXTilePropertiesListener;
-import org.andengine.extension.tmx.util.exception.TMXLoadException;
 import org.andengine.input.touch.TouchEvent;
 import org.andengine.input.touch.controller.MultiTouch;
 import org.andengine.opengl.texture.TextureOptions;
@@ -91,7 +83,6 @@ public class MainActivity extends SimpleBaseGameActivity{
 	private BoundCamera mBoundChaseCamera;
 
 	
-	private TMXTiledMap mTMXTiledMap;
 	
 	
 	
@@ -155,15 +146,15 @@ public class MainActivity extends SimpleBaseGameActivity{
 		//ground
 		this.mPhysicsWorld = new FixedStepPhysicsWorld(30, new Vector2(0, SensorManager.GRAVITY_EARTH+9), false, 3, 2);
 
-		final Rectangle ground = new Rectangle(0, CAMERA_HEIGHT - 2, CAMERA_WIDTH, 2, this.getVertexBufferObjectManager());
-		final Rectangle roof = new Rectangle(0, 0, CAMERA_WIDTH, 2, this.getVertexBufferObjectManager());
-		final Rectangle left = new Rectangle(0, 0, 2, CAMERA_HEIGHT, this.getVertexBufferObjectManager());
-		final Rectangle right = new Rectangle(CAMERA_WIDTH - 2, 0, 2, CAMERA_HEIGHT, this.getVertexBufferObjectManager());
-
+		final Rectangle ground = new Rectangle(0, CAMERA_HEIGHT - 2, CAMERA_WIDTH*3, 2, vertexBufferObjectManager);		 
+		final Rectangle ground2 = new Rectangle(500, CAMERA_HEIGHT-50 , CAMERA_WIDTH*3, 2, vertexBufferObjectManager);
+				
+		
 		final FixtureDef wallFixtureDef = PhysicsFactory.createFixtureDef(0, 0.5f, 0.5f);
 		PhysicsFactory.createBoxBody(this.mPhysicsWorld, ground, BodyType.StaticBody, wallFixtureDef);
-		
+		PhysicsFactory.createBoxBody(this.mPhysicsWorld, ground2, BodyType.StaticBody, wallFixtureDef);;
 		this.mScene.attachChild(ground);
+		this.mScene.attachChild(ground2);
 		
 
 		this.mScene.registerUpdateHandler(this.mPhysicsWorld);
@@ -174,10 +165,19 @@ public class MainActivity extends SimpleBaseGameActivity{
 		final float playerY = CAMERA_HEIGHT - this.mPlayerTextureRegion.getHeight() - 5;
 
 		/* Create two sprits and add it to the scene. */
-		final AnimatedSprite player = new AnimatedSprite(playerX-200, CAMERA_HEIGHT - 3, this.mPlayerTextureRegion, vertexBufferObjectManager);
+		final AnimatedSprite player = new AnimatedSprite(playerX-200,  3, this.mPlayerTextureRegion, vertexBufferObjectManager);
 		player.setScaleCenterY(this.mPlayerTextureRegion.getHeight());
 		player.setScale(3.5f);
-		this.mBoundChaseCamera.setChaseEntity(player);
+		mScene.attachChild(player);
+		
+		
+		
+		final FixtureDef FixtureDef = PhysicsFactory.createFixtureDef(1, 0.5f, 0.5f);
+		playerbody = PhysicsFactory.createBoxBody(mPhysicsWorld, player, BodyType.DynamicBody, FixtureDef);
+		this.mPhysicsWorld.registerPhysicsConnector(new PhysicsConnector(player, playerbody, true, false));
+		mCamera.setChaseEntity(player);
+		
+		
 				
 				
 		
@@ -186,7 +186,7 @@ public class MainActivity extends SimpleBaseGameActivity{
 		this.mDigitalOnScreenControl = new DigitalOnScreenControl(0, CAMERA_HEIGHT - this.mOnScreenControlBaseTextureRegion.getHeight(), this.mCamera, this.mOnScreenControlBaseTextureRegion, this.mOnScreenControlKnobTextureRegion, 0.1f, this.getVertexBufferObjectManager(), new IOnScreenControlListener() {
 			public void onControlChange(final BaseOnScreenControl pBaseOnScreenControl, final float pValueX, final float pValueY) {
 				Vector2 velocity=new Vector2(pValueX*5, 0);
-								playerbody.setLinearVelocity(velocity);
+					playerbody.setLinearVelocity(velocity);
 								
 
 				if(!player.isAnimationRunning() && !player.isAnimationRunning())
@@ -236,12 +236,15 @@ public class MainActivity extends SimpleBaseGameActivity{
 		button.setAlpha(0.5f);
 		button.setScale(1.5f);
 		
+		//this.mDigitalOnScreenControl.attachChild(button);
 
 		mScene.setChildScene(this.mDigitalOnScreenControl);
+		//Scene buttonS = new Scene();
+		//buttonS.attachChild(button);
+		mDigitalOnScreenControl.attachChild(button);
+		mDigitalOnScreenControl.registerTouchArea(button);
+		//mScene.setChildScene(buttonS);
 		
-		mScene.attachChild(button);
-		mScene.registerTouchArea(button);
-		mScene.attachChild(player);
 		
 		
 		mScene.registerUpdateHandler(this.mPhysicsWorld);
@@ -264,6 +267,7 @@ public class MainActivity extends SimpleBaseGameActivity{
 		
 		playerbody.setLinearVelocity(new Vector2(playerbody.getLinearVelocity().x,-15f));
 	    playerbody.setLinearVelocity(new Vector2(x,playerbody.getLinearVelocity().y));;
+	    
   	  
   	   
 	}
