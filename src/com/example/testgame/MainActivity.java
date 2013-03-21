@@ -1,5 +1,6 @@
 package com.example.testgame;
 
+import org.anddev.andengine.opengl.texture.bitmap.BitmapTexture;
 import org.andengine.engine.camera.BoundCamera;
 import org.andengine.engine.camera.Camera;
 import org.andengine.engine.camera.hud.controls.AnalogOnScreenControl;
@@ -23,12 +24,14 @@ import org.andengine.extension.physics.box2d.FixedStepPhysicsWorld;
 import org.andengine.extension.physics.box2d.PhysicsConnector;
 import org.andengine.extension.physics.box2d.PhysicsFactory;
 import org.andengine.extension.physics.box2d.PhysicsWorld;
+import org.andengine.extension.physics.box2d.util.Vector2Pool;
 import org.andengine.input.touch.TouchEvent;
 import org.andengine.input.touch.controller.MultiTouch;
 import org.andengine.opengl.texture.TextureOptions;
 import org.andengine.opengl.texture.atlas.bitmap.BitmapTextureAtlas;
 import org.andengine.opengl.texture.atlas.bitmap.BitmapTextureAtlasTextureRegionFactory;
 import org.andengine.opengl.texture.region.ITextureRegion;
+import org.andengine.opengl.texture.region.TextureRegion;
 import org.andengine.opengl.texture.region.TiledTextureRegion;
 import org.andengine.opengl.vbo.VertexBufferObjectManager;
 import org.andengine.ui.activity.SimpleBaseGameActivity;
@@ -56,12 +59,15 @@ public class MainActivity extends SimpleBaseGameActivity{
 	private BitmapTextureAtlas mBitmapTextureAtlas;
 	private TiledTextureRegion mPlayerTextureRegion;
 	
+	private TextureRegion bulletRegion;
+	
 	private Camera mCamera;
 	
 	private BitmapTextureAtlas mOnScreenControlTexture;
 	private ITextureRegion mOnScreenControlBaseTextureRegion;
 	private ITextureRegion mOnScreenControlKnobTextureRegion;
 	private DigitalOnScreenControl mDigitalOnScreenControl;
+	AnimatedSprite player;
 	
 
 	private PhysicsWorld mPhysicsWorld;
@@ -71,20 +77,14 @@ public class MainActivity extends SimpleBaseGameActivity{
 	Scene mScene = new Scene();
 	
 	private boolean direct;
-	private boolean running=false;
+	
 	
 	private Body playerbody;
+	private Body bulletbody;
 	
 	private BitmapTextureAtlas mButtonTexture;
 	private ITextureRegion mButtonTextureRegion;
 	private boolean mPlaceOnScreenControlsAtDifferentVerticalLocations = false;
-	
-	
-	private BoundCamera mBoundChaseCamera;
-
-	
-	
-	
 	
 	@Override
 	public EngineOptions onCreateEngineOptions() {
@@ -137,35 +137,24 @@ public class MainActivity extends SimpleBaseGameActivity{
 		mScene.setBackground(new Background(0.09804f, 0.6274f, 0.8784f));
 		
 		
-		/* Calculate the coordinates for the face, so its centered on the camera. */
-		final float centerX = (CAMERA_WIDTH - this.mPlayerTextureRegion.getWidth()) / 2;
-		final float centerY = (CAMERA_HEIGHT - this.mPlayerTextureRegion.getHeight()) / 2;
-		
-		
 		
 		//ground
-		this.mPhysicsWorld = new FixedStepPhysicsWorld(30, new Vector2(0, SensorManager.GRAVITY_EARTH+9), false, 3, 2);
+		this.mPhysicsWorld = new FixedStepPhysicsWorld(30, new Vector2(0, 9.8f), true, 0, 0);
 
 		final Rectangle ground = new Rectangle(0, CAMERA_HEIGHT - 2, CAMERA_WIDTH*3, 2, vertexBufferObjectManager);		 
-		final Rectangle ground2 = new Rectangle(500, CAMERA_HEIGHT-50 , CAMERA_WIDTH*3, 2, vertexBufferObjectManager);
-				
+
 		
 		final FixtureDef wallFixtureDef = PhysicsFactory.createFixtureDef(0, 0.5f, 0.5f);
 		PhysicsFactory.createBoxBody(this.mPhysicsWorld, ground, BodyType.StaticBody, wallFixtureDef);
-		PhysicsFactory.createBoxBody(this.mPhysicsWorld, ground2, BodyType.StaticBody, wallFixtureDef);;
 		this.mScene.attachChild(ground);
-		this.mScene.attachChild(ground2);
-		
-
-		this.mScene.registerUpdateHandler(this.mPhysicsWorld);
 		
 
 		/* Calculate the coordinates for the face, so its centered on the camera. */
 		final float playerX = (CAMERA_WIDTH - this.mPlayerTextureRegion.getWidth()) / 2;
-		final float playerY = CAMERA_HEIGHT - this.mPlayerTextureRegion.getHeight() - 5;
+		
 
-		/* Create two sprits and add it to the scene. */
-		final AnimatedSprite player = new AnimatedSprite(playerX-200,  3, this.mPlayerTextureRegion, vertexBufferObjectManager);
+		
+		player = new AnimatedSprite(playerX-200,  3, this.mPlayerTextureRegion, vertexBufferObjectManager);
 		player.setScaleCenterY(this.mPlayerTextureRegion.getHeight());
 		player.setScale(3.5f);
 		mScene.attachChild(player);
@@ -176,11 +165,6 @@ public class MainActivity extends SimpleBaseGameActivity{
 		playerbody = PhysicsFactory.createBoxBody(mPhysicsWorld, player, BodyType.DynamicBody, FixtureDef);
 		this.mPhysicsWorld.registerPhysicsConnector(new PhysicsConnector(player, playerbody, true, false));
 		mCamera.setChaseEntity(player);
-		
-		
-				
-				
-		
 		
 		//Controls
 		this.mDigitalOnScreenControl = new DigitalOnScreenControl(0, CAMERA_HEIGHT - this.mOnScreenControlBaseTextureRegion.getHeight(), this.mCamera, this.mOnScreenControlBaseTextureRegion, this.mOnScreenControlKnobTextureRegion, 0.1f, this.getVertexBufferObjectManager(), new IOnScreenControlListener() {
@@ -201,9 +185,9 @@ public class MainActivity extends SimpleBaseGameActivity{
 	               
 	                }
 				
+				
 			}
-			
-			
+		
 			
 			
 		});
@@ -219,12 +203,13 @@ public class MainActivity extends SimpleBaseGameActivity{
 		
 		
 	//jump	
-		ButtonSprite button = new  ButtonSprite(CAMERA_WIDTH-120, CAMERA_HEIGHT-90, mButtonTextureRegion, vertexBufferObjectManager) {
+		ButtonSprite button = new  ButtonSprite(CAMERA_WIDTH-170, CAMERA_HEIGHT-70, mButtonTextureRegion, vertexBufferObjectManager) {
 
 			public boolean onAreaTouched(TouchEvent pTouchEvent, float pTouchAreaLocalX, float pTouchAreaLocalY) {
 		           if(pTouchEvent.isActionDown()) {
 		        	   if(player.getY() > 5){//ground.getY()-95){
 		        		   jump();
+		        		   
 		        	   }
 		        	   else{
 		        		   
@@ -236,14 +221,26 @@ public class MainActivity extends SimpleBaseGameActivity{
 		button.setAlpha(0.5f);
 		button.setScale(1.5f);
 		
-		//this.mDigitalOnScreenControl.attachChild(button);
+		
+		ButtonSprite fire = new  ButtonSprite(CAMERA_WIDTH-85, CAMERA_HEIGHT-130, mButtonTextureRegion, vertexBufferObjectManager) {
 
+			public boolean onAreaTouched(TouchEvent pTouchEvent, float pTouchAreaLocalX, float pTouchAreaLocalY) {
+		           if(pTouchEvent.isActionDown()) {
+		        	   fire();
+		        			           }
+		           return super.onAreaTouched(pTouchEvent, pTouchAreaLocalX, pTouchAreaLocalY);
+		       }
+		};
+		fire.setAlpha(0.5f);
+		fire.setScale(1.5f);
+		
+		
 		mScene.setChildScene(this.mDigitalOnScreenControl);
-		//Scene buttonS = new Scene();
-		//buttonS.attachChild(button);
+		
 		mDigitalOnScreenControl.attachChild(button);
 		mDigitalOnScreenControl.registerTouchArea(button);
-		//mScene.setChildScene(buttonS);
+		mDigitalOnScreenControl.attachChild(fire);
+		mDigitalOnScreenControl.registerTouchArea(fire);
 		
 		
 		
@@ -271,6 +268,34 @@ public class MainActivity extends SimpleBaseGameActivity{
   	  
   	   
 	}
+	
+	public void fire() {
+	     
+		this.bulletRegion=BitmapTextureAtlasTextureRegionFactory.createFromAsset(this.mBitmapTextureAtlas, this,"flecha.png", 0, 0);
+		this.mBitmapTextureAtlas.load();
+        float startBulletX=player.getX()+10;
+        float startBulletY=player.getY(); 
+        
+        final VertexBufferObjectManager vfm = this.getVertexBufferObjectManager();
+        Sprite bullet=new Sprite(startBulletX, startBulletY, bulletRegion, vfm);
+        
+        final FixtureDef bulletFixtureDef1 = PhysicsFactory.createFixtureDef(1, 0, 0);
+        this.bulletbody = PhysicsFactory.createBoxBody(this.mPhysicsWorld, bullet, BodyType.KinematicBody, bulletFixtureDef1);
+       int x=0;
+        if(direct){
+    	   x=10;
+       }else{
+    	   bullet.setRotation(180);
+    	   x=-10;}
+        Vector2 velocity1=new Vector2(x, 0);
+        this.bulletbody.setLinearVelocity(velocity1);
+        
+        this.mPhysicsWorld.registerPhysicsConnector(new PhysicsConnector(bullet, this.bulletbody, true, false));
+ 
+        this.mScene.attachChild(bullet);
+        this.mScene.registerUpdateHandler(this.mPhysicsWorld);
+    }
+
 
 	    
 }
