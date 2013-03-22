@@ -126,7 +126,7 @@ public class MainActivity extends SimpleBaseGameActivity{
 		this.mEnemyTextureAtlas.load();
 		
 		this.mBulletTextureAtlas = new BitmapTextureAtlas(this.getTextureManager(), 50, 50, TextureOptions.BILINEAR);
-		this.bulletRegion=BitmapTextureAtlasTextureRegionFactory.createFromAsset(this.mBulletTextureAtlas, this,"flecha.png", 0, 0);
+		this.bulletRegion=BitmapTextureAtlasTextureRegionFactory.createFromAsset(this.mBulletTextureAtlas, this,"arrow.png", 0, 0);
 		this.mBulletTextureAtlas.load();
 		
 		this.mOnScreenControlTexture = new BitmapTextureAtlas(this.getTextureManager(), 256, 128, TextureOptions.BILINEAR);
