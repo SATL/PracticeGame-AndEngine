@@ -18,6 +18,7 @@ import org.andengine.entity.modifier.ScaleModifier;
 import org.andengine.entity.modifier.SequenceEntityModifier;
 import org.andengine.entity.modifier.PathModifier.IPathModifierListener;
 import org.andengine.entity.modifier.PathModifier.Path;
+import org.andengine.entity.primitive.Line;
 import org.andengine.entity.primitive.Rectangle;
 import org.andengine.entity.scene.Scene;
 import org.andengine.entity.scene.background.Background;
@@ -25,6 +26,7 @@ import org.andengine.entity.sprite.AnimatedSprite;
 import org.andengine.entity.sprite.ButtonSprite;
 import org.andengine.entity.sprite.Sprite;
 import org.andengine.entity.util.FPSLogger;
+import org.andengine.extension.physics.box2d.FixedStepPhysicsWorld;
 import org.andengine.extension.physics.box2d.PhysicsConnector;
 import org.andengine.extension.physics.box2d.PhysicsFactory;
 import org.andengine.extension.physics.box2d.PhysicsWorld;
@@ -65,19 +67,22 @@ public class MainActivity extends SimpleBaseGameActivity{
 	private BitmapTextureAtlas mEnemyTextureAtlas;
 	private TiledTextureRegion mEnemyTextureRegion;
 	
+	private BitmapTextureAtlas mBackgroungTextureAtlas;
+	private ITextureRegion backgroundRegion;
+	
 	private Camera mCamera;
 	
 	private BitmapTextureAtlas mOnScreenControlTexture;
 	private ITextureRegion mOnScreenControlBaseTextureRegion;
 	private ITextureRegion mOnScreenControlKnobTextureRegion;
 	private DigitalOnScreenControl mDigitalOnScreenControl;
+	
 	AnimatedSprite player;
 	AnimatedSprite enemy;
 	Sprite bullet;
 	private PhysicsWorld mPhysicsWorld;
 	
-	
-
+	public boolean vivo=true;
 	Scene mScene = new Scene();
 	
 	private boolean direct;
@@ -126,8 +131,12 @@ public class MainActivity extends SimpleBaseGameActivity{
 		this.mEnemyTextureAtlas.load();
 		
 		this.mBulletTextureAtlas = new BitmapTextureAtlas(this.getTextureManager(), 50, 50, TextureOptions.BILINEAR);
-		this.bulletRegion=BitmapTextureAtlasTextureRegionFactory.createFromAsset(this.mBulletTextureAtlas, this,"arrow.png", 0, 0);
+		this.bulletRegion=BitmapTextureAtlasTextureRegionFactory.createFromAsset(this.mBulletTextureAtlas, this,"flecha.png", 0, 0);
 		this.mBulletTextureAtlas.load();
+		
+		this.mBackgroungTextureAtlas = new BitmapTextureAtlas(this.getTextureManager(), 1024, 1024, TextureOptions.BILINEAR);
+		this.backgroundRegion=BitmapTextureAtlasTextureRegionFactory.createFromAsset(this.mBackgroungTextureAtlas, this,"background.png", 0, 0);
+		this.mBackgroungTextureAtlas.load();
 		
 		this.mOnScreenControlTexture = new BitmapTextureAtlas(this.getTextureManager(), 256, 128, TextureOptions.BILINEAR);
 		this.mOnScreenControlBaseTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(this.mOnScreenControlTexture, this, "onscreen_control_base.png", 0, 0);
@@ -146,16 +155,13 @@ public class MainActivity extends SimpleBaseGameActivity{
 		this.mEngine.registerUpdateHandler(new FPSLogger());
 			
 		mScene.setBackground(new Background(0.09804f, 0.6274f, 0.8784f));
-			
-		this.mPhysicsWorld = new PhysicsWorld(new Vector2(0, 40), false);
+		
+		this.mPhysicsWorld = new FixedStepPhysicsWorld(30, new Vector2(0, 50), false, 3, 2);
 		
 		initPlayer();
 		initBounds();
 		initControls();
-		
-		
 			
-		
 		mScene.registerUpdateHandler(this.mPhysicsWorld);
 
 		return mScene;
@@ -174,7 +180,12 @@ public class MainActivity extends SimpleBaseGameActivity{
 			x=-7;
 		}
 		final Vector2 velocity = Vector2Pool.obtain(x, 50);
+		final Vector2 velocity1 = Vector2Pool.obtain(x, 50);
+		final Vector2 velocity2 = Vector2Pool.obtain(x, 50);
+		playerbody.setLinearVelocity(velocity1);
+		playerbody.setLinearVelocity(velocity2);
 		playerbody.setLinearVelocity(velocity);
+		
 		Vector2Pool.recycle(velocity);
 		
 	    
@@ -191,7 +202,7 @@ public class MainActivity extends SimpleBaseGameActivity{
         if(direct){
     	   x=10;
        }else{
-    	   startBulletX=player.getX()-50;
+    	   startBulletX=player.getX()-70;
     	   x=-10;}
         
        
@@ -223,15 +234,44 @@ public class MainActivity extends SimpleBaseGameActivity{
 					//enemy.setCurrentTileIndex(pCurrentTileIndex);
 					enemy.setRotation(90);
 					enemy.stopAnimation();
+					enemy.clearEntityModifiers();
+					vivo=false;
+					
 				} else {
 					
 				}
 				
+
+							
 				
 			}
 		});
         
     }
+	
+	
+	public void seguir(Path path){
+		enemy.registerEntityModifier(new LoopEntityModifier(new PathModifier(10, path, null, new IPathModifierListener() {
+            @Override
+            public void onPathStarted(final PathModifier pPathModifier, final IEntity pEntity) {
+
+            }
+
+            @Override
+            public void onPathWaypointStarted(final PathModifier pPathModifier, final IEntity pEntity, final int pWaypointIndex) {
+                               }
+
+            @Override
+            public void onPathWaypointFinished(final PathModifier pPathModifier, final IEntity pEntity, final int pWaypointIndex) {
+
+            }
+
+            @Override
+            public void onPathFinished(final PathModifier pPathModifier, final IEntity pEntity) {
+
+            }
+    })));
+}
 	
 	
 	private void initPlayer(){
@@ -241,7 +281,7 @@ public class MainActivity extends SimpleBaseGameActivity{
 		player.setScaleCenterY(this.mPlayerTextureRegion.getHeight());
 		player.setScale(3.5f);
 		
-		enemy = new AnimatedSprite(playerX+500, CAMERA_HEIGHT - 40, this.mEnemyTextureRegion, this.getVertexBufferObjectManager());
+		enemy = new AnimatedSprite(0, CAMERA_HEIGHT - 72, this.mEnemyTextureRegion, this.getVertexBufferObjectManager());
 		enemy.setScaleCenterY(this.mEnemyTextureRegion.getHeight());
 		enemy.setScale(3.5f);
 		
@@ -255,54 +295,20 @@ public class MainActivity extends SimpleBaseGameActivity{
 		
 		
 		
-		final Path path = new Path(2).to(0, CAMERA_HEIGHT - 40).to(playerX+500, CAMERA_HEIGHT - 40);
-
-		
-		enemy.registerEntityModifier(new LoopEntityModifier(new PathModifier(30, path, null, new IPathModifierListener() {
-			@Override
-			public void onPathStarted(final PathModifier pPathModifier, final IEntity pEntity) {
-				Debug.d("onPathStarted");
-			}
-
-			@Override
-			public void onPathWaypointStarted(final PathModifier pPathModifier, final IEntity pEntity, final int pWaypointIndex) {
-				Debug.d("onPathWaypointStarted:  " + pWaypointIndex);
-				switch(pWaypointIndex) {
-					case 0:
-						enemy.animate(new long[]{200, 200, 200}, 6, 8, true);
-						break;
-					case 1:
-						enemy.animate(new long[]{200, 200, 200}, 3, 5, true);
-						break;
-					case 2:
-						enemy.animate(new long[]{200, 200, 200}, 0, 2, true);
-						break;
-					case 3:
-						enemy.animate(new long[]{200, 200, 200}, 9, 11, true);
-						break;
-				}
-			}
-
-			@Override
-			public void onPathWaypointFinished(final PathModifier pPathModifier, final IEntity pEntity, final int pWaypointIndex) {
-				Debug.d("onPathWaypointFinished: " + pWaypointIndex);
-			}
-
-			@Override
-			public void onPathFinished(final PathModifier pPathModifier, final IEntity pEntity) {
-				Debug.d("onPathFinished");
-			}
-		}, EaseSineInOut.getInstance())));
 		
 		mScene.attachChild(enemy);
 	}
 	
 	private void initBounds(){
-		final Rectangle ground = new Rectangle(0, CAMERA_HEIGHT-2 , CAMERA_WIDTH*3, 2, this.getVertexBufferObjectManager());		 
+		/*final Line ground = new Line(0, CAMERA_HEIGHT-2 , CAMERA_WIDTH*3, CAMERA_HEIGHT-2, this.getVertexBufferObjectManager());		 
 		ground.setColor(0, 0, 0);
 		FixtureDef wallFixtureDef = PhysicsFactory.createFixtureDef(0, 0.5f, 0.5f);
-		PhysicsFactory.createBoxBody(this.mPhysicsWorld, ground, BodyType.StaticBody, wallFixtureDef);
-		this.mScene.attachChild(ground);
+		PhysicsFactory.createLineBody(mPhysicsWorld, ground, wallFixtureDef);*/
+		Sprite ground =new Sprite(CAMERA_WIDTH, CAMERA_HEIGHT, backgroundRegion, this.getVertexBufferObjectManager());
+		FixtureDef wallFixtureDef = PhysicsFactory.createFixtureDef(0, 0.5f, 0.5f);
+		PhysicsFactory.createBoxBody(mPhysicsWorld, ground, BodyType.StaticBody , wallFixtureDef);
+		
+		mScene.attachChild(ground);
 	}
 	
 	public void initControls(){
@@ -310,9 +316,27 @@ public class MainActivity extends SimpleBaseGameActivity{
 		this.mDigitalOnScreenControl = new DigitalOnScreenControl(0, CAMERA_HEIGHT - this.mOnScreenControlBaseTextureRegion.getHeight(), this.mCamera, this.mOnScreenControlBaseTextureRegion, this.mOnScreenControlKnobTextureRegion, 0.1f, this.getVertexBufferObjectManager(), new IOnScreenControlListener() {
 			public void onControlChange(final BaseOnScreenControl pBaseOnScreenControl, final float pValueX, final float pValueY) {
 				Vector2 velocity=new Vector2(pValueX*5, 0);
+					
 					playerbody.setLinearVelocity(velocity);
-					Vector2Pool.recycle(velocity);		
+					Vector2Pool.recycle(velocity);	
+					enemy.stopAnimation();
+					enemy.clearEntityModifiers();
 										
+					if(vivo){
+						seguir(	new Path(2).to(enemy.getX(),enemy.getY()).to(player.getX(),enemy.getY()));
+					if(player.getX()>enemy.getX()){
+						enemy.animate(new long[]{100, 100, 100}, 3, 5, false);
+					}
+					else{
+						enemy.animate(new long[]{100, 100, 100}, 9, 11, false);
+					}
+					
+					
+					
+					}
+					else{}
+					
+					
 				if(!player.isAnimationRunning() && !player.isAnimationRunning())
 	                if(pValueX>0 && !player.isAnimationRunning()){//Derecha
 	                    direct=true;
@@ -382,6 +406,8 @@ public class MainActivity extends SimpleBaseGameActivity{
 		mDigitalOnScreenControl.registerTouchArea(fire);
 		
 	}
+	
+	
 	
 	
 	    
